@@ -25,12 +25,12 @@ from stackless_testsuite import stackless_api
 from stackless_testsuite.util import FUNCTION, create_type_tests_for_module
 import stackless
 
-
-DECLARED_API = {'bomb': callable,  # undocumented in the manual
+# you get them by "from stackless import *"
+DECLARED_API = {# 'bomb': callable,  # undocumented in the manual
                 'atomic': type,
-                'set_error_handler': callable,  # undocumented in the manual
+                # 'set_error_handler': callable,  # undocumented in the manual, debug related
                 'getmain': FUNCTION,
-                'switch_trap': FUNCTION,
+                # 'switch_trap': FUNCTION, debug related
                 'get_thread_info': FUNCTION,
                 'tasklet': type,
                 'stackless': types.ModuleType,
@@ -39,10 +39,12 @@ DECLARED_API = {'bomb': callable,  # undocumented in the manual
                 'getruncount': FUNCTION,
                 'schedule_remove': FUNCTION,
                 'getcurrent': FUNCTION,
-                'enable_softswitch': FUNCTION,
+                # 'enable_softswitch': FUNCTION,  depends on the implementation
                 'getcurrentid': FUNCTION,  # undocumented in the manual
                 'channel': type,
                 }
+
+# not imported by a "from stackless import *", but provided and documented
 ADDITIONAL_API = {"current": stackless.tasklet,
                   "main": stackless.tasklet,
                   "runcount": int,
