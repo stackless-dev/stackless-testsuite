@@ -27,7 +27,7 @@ import inspect
 
 FUNCTION = object()
 ROUTINE = object()
-PROPERTY = (types.GetSetDescriptorType, types.MemberDescriptorType)
+PROPERTY = (types.GetSetDescriptorType, types.MemberDescriptorType, property)
 
 
 def _testAttributeTypeTemplate(self, getContainer=None, name=None, expected_type=None):

@@ -60,7 +60,7 @@ class TestTaskletContent(unittest.TestCase):
     def setUp(self):
         unittest.TestCase.setUp(self)
         self.the_class = stackless.tasklet
-        self.the_instance = stackless.current
+        self.the_instance = stackless.getcurrent()
         self.assertIsInstance(self.the_instance, self.the_class)
 
     def testDeclaredNames(self):
