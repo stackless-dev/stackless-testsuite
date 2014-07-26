@@ -1,0 +1,17 @@
+syntax: glob
+*~
+*.bak
+*.orig
+*.rej
+*.pyc
+*.pyo
+
+
+syntax: regexp
+^build$
+^dist$
+^.*\.egg$
+^.*\.egg-info$
+^\.settings$
+^\.project$
+^\.pydevproject$
