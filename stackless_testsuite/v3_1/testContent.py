@@ -20,12 +20,11 @@ from __future__ import absolute_import, print_function, division
 
 import unittest
 import types
-import inspect
 
 from stackless_testsuite import stackless_api
+from stackless_testsuite.util import FUNCTION, create_type_tests_for_module
 import stackless
 
-FUNCTION = object()
 
 DECLARED_API = {'bomb': callable,  # undocumented in the manual
                 'atomic': type,
@@ -68,31 +67,8 @@ class TestModuleContent(unittest.TestCase):
                 missing.add(name)
         self.assertFalse(missing, "Missing names {}".format(missing))
 
-    # create the remaining tests dynamically
-    def typeTest(self, name=None, expected_type=None):
-        try:
-            value = getattr(stackless, name)
-        except AttributeError:
-            self.fail("API name {} not defined".format(name))
-        if expected_type is callable:
-            self.assertTrue(callable(value))
-        elif expected_type is FUNCTION:
-            self.assertTrue(inspect.isfunction(value) or inspect.isbuiltin(value))
-        else:
-            self.assertIsInstance(value, expected_type)
-
-    api = dict(DECLARED_API)
-    api.update(ADDITIONAL_API)
-    ns = locals()
-    for name in api:
-        test_name = "testTypeOf_" + name
-        # create a new function with the right name and
-        # default arguments
-        ns[test_name] = types.FunctionType(typeTest.__code__,
-                                           typeTest.__globals__,
-                                           test_name,
-                                           (name, api[name]))
-    del typeTest
+    #  create the remaining tests dynamically
+    create_type_tests_for_module(locals(), stackless, DECLARED_API, ADDITIONAL_API)
 
 
 if __name__ == "__main__":
