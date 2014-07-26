@@ -25,15 +25,17 @@ import stackless
 
 from stackless_testsuite.util import ROUTINE, PROPERTY, create_type_tests_for_class
 
+NEXT_NAME = "next" if hasattr(iter(()), "next") else "__next__"
+
 DECLARED_API = {'__iter__': (ROUTINE, callable),
                 'balance': (PROPERTY, int),
                 'close': ROUTINE,
                 'closed': (PROPERTY, bool),
                 'closing': (PROPERTY, bool),
-                'next': (ROUTINE, callable),
+                NEXT_NAME: (ROUTINE, callable),
                 'open': ROUTINE,
                 'preference': (PROPERTY, int),
-                'queue': (PROPERTY, (stackless.tasklet, types.NoneType)),
+                'queue': (PROPERTY, (stackless.tasklet, type(None))),
                 'receive': ROUTINE,
                 'schedule_all': (PROPERTY, int),
                 'send': ROUTINE,
