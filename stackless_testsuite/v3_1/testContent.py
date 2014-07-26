@@ -20,6 +20,7 @@ from __future__ import absolute_import, print_function, division
 
 import unittest
 import types
+import __builtin__
 
 from stackless_testsuite import stackless_api
 from stackless_testsuite.util import FUNCTION, create_type_tests_for_module
@@ -68,6 +69,15 @@ class TestModuleContent(unittest.TestCase):
             except AttributeError:
                 missing.add(name)
         self.assertFalse(missing, "Missing names {}".format(missing))
+
+    def testTaskletExit(self):
+        # TaskletExit is special, as it is defined in __builtin__
+        try:
+            te = __builtin__.TaskletExit
+        except AttributeError:
+            self.fail("__builtin__ does not contain TaskletExit")
+        # Stackless Documentation says so
+        self.assertTrue(issubclass(te, SystemExit), "TaskletExit is not a subclass of SystemExit")
 
     #  create the remaining tests dynamically
     create_type_tests_for_module(locals(), stackless, DECLARED_API, ADDITIONAL_API)
