@@ -27,23 +27,23 @@ from stackless_testsuite.util import FUNCTION, create_type_tests_for_module
 import stackless
 
 # you get them by "from stackless import *"
-DECLARED_API = {# 'bomb': callable,  # undocumented in the manual
-                'atomic': type,
-                # 'set_error_handler': callable,  # undocumented in the manual, debug related
-                'getmain': FUNCTION,
-                # 'switch_trap': FUNCTION, debug related
-                'get_thread_info': FUNCTION,
-                'tasklet': type,
-                'stackless': types.ModuleType,
-                'run': FUNCTION,
-                'schedule': FUNCTION,
-                'getruncount': FUNCTION,
-                'schedule_remove': FUNCTION,
-                'getcurrent': FUNCTION,
-                # 'enable_softswitch': FUNCTION,  depends on the implementation
-                'getcurrentid': FUNCTION,  # undocumented in the manual
-                'channel': type,
-                }
+DECLARED_API = {  # 'bomb': callable,  # undocumented in the manual
+    'atomic': type,
+    # 'set_error_handler': callable,  # undocumented in the manual, debug related
+    'getmain': FUNCTION,
+    # 'switch_trap': FUNCTION, debug related
+    'get_thread_info': FUNCTION,
+    'tasklet': type,
+    'stackless': types.ModuleType,
+    'run': FUNCTION,
+    'schedule': FUNCTION,
+    'getruncount': FUNCTION,
+    'schedule_remove': FUNCTION,
+    'getcurrent': FUNCTION,
+    # 'enable_softswitch': FUNCTION,  depends on the implementation
+    # 'getcurrentid': FUNCTION,  # undocumented in the manual
+    'channel': type,
+}
 
 # not imported by a "from stackless import *", but provided and documented
 ADDITIONAL_API = {"current": stackless.tasklet,
@@ -77,10 +77,12 @@ class TestModuleContent(unittest.TestCase):
         except AttributeError:
             self.fail("__builtin__ does not contain TaskletExit")
         # Stackless Documentation says so
-        self.assertTrue(issubclass(te, SystemExit), "TaskletExit is not a subclass of SystemExit")
+        self.assertTrue(
+            issubclass(te, SystemExit), "TaskletExit is not a subclass of SystemExit")
 
     #  create the remaining tests dynamically
-    create_type_tests_for_module(locals(), stackless, DECLARED_API, ADDITIONAL_API)
+    create_type_tests_for_module(
+        locals(), stackless, DECLARED_API, ADDITIONAL_API)
 
 
 if __name__ == "__main__":

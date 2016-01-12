@@ -18,6 +18,5 @@
 
 # get the API and nothing else
 from __future__ import absolute_import
+from stackless import *  # @UnusedWildImport
 del absolute_import
-
-from stackless import *
