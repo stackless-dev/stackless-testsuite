@@ -24,6 +24,9 @@ from __future__ import absolute_import, print_function, division
 
 import types
 import inspect
+import sys
+import unittest
+import stackless
 
 FUNCTION = object()
 ROUTINE = object()
@@ -81,3 +84,91 @@ def create_type_tests_for_class(ns, api):
                                                template.__globals__,
                                                test_name,
                                                (getContainer, name, expected_type))
+
+
+try:
+    import threading
+    withThreads = True
+except:
+    withThreads = False
+
+
+class StacklessTestCase(unittest.TestCase):
+    __preexisting_threads = None
+
+    def setUp(self):
+        self.assertEqual(stackless.getruncount(), 1, "Leakage from other tests, with %d tasklets still in the scheduler" % (stackless.getruncount() - 1))
+        if withThreads:
+            active_count = threading.active_count()
+            if self.__preexisting_threads is None:
+                self.__preexisting_threads = frozenset(threading.enumerate())
+            expected_thread_count = len(self.__preexisting_threads)
+            self.assertEqual(active_count, expected_thread_count, "Leakage from other threads, with %d threads running (%d expected)" % (active_count, expected_thread_count))
+
+    def tearDown(self):
+        # Tasklets created in pickling tests can be left in the scheduler when they finish.  We can feel free to
+        # clean them up for the tests.  Any tests that expect to exit with no leaked tasklets should do explicit
+        # assertions to check.
+        mainTasklet = stackless.getmain()
+        current = mainTasklet.next
+        while current is not None and current is not mainTasklet:
+            next_ = current.next
+            current.kill()
+            current = next_
+        self.assertEqual(stackless.getruncount(
+        ), 1, "Leakage from this test, with %d tasklets still in the scheduler" % (stackless.getruncount() - 1))
+        if withThreads:
+            expected_thread_count = len(self.__preexisting_threads)
+            active_count = threading.active_count()
+            if active_count > expected_thread_count:
+                activeThreads = set(threading.enumerate())
+                activeThreads -= self.__preexisting_threads
+                self.assertNotIn(threading.current_thread(), activeThreads, "tearDown runs on the wrong thread.")
+                while activeThreads:
+                    activeThreads.pop().join(0.5)
+                active_count = threading.active_count()
+            self.assertEqual(active_count, expected_thread_count, "Leakage from other threads, with %d threads running (%d expected)" % (active_count, expected_thread_count))
+
+    SAFE_TESTCASE_ATTRIBUTES = unittest.TestCase(
+        methodName='run').__dict__.keys()
+
+    def _addSkip(self, result, reason):
+        # Remove non standard attributes. They could render the test case object unpickleable.
+        # This is a hack, but it works fairly well.
+        for k in self.__dict__.keys():
+            if k not in self.SAFE_TESTCASE_ATTRIBUTES and \
+                    not isinstance(self.__dict__[k], (types.NoneType, basestring, int, long, float)):
+                del self.__dict__[k]
+        super(StacklessTestCase, self)._addSkip(result, reason)
+
+
+class AsTaskletTestCase(StacklessTestCase):
+    """A test case class, that runs tests as tasklets"""
+
+    def setUp(self):
+        self._ran_AsTaskletTestCase_setUp = True
+        if stackless.enable_softswitch(None):
+            self.assertEqual(stackless.current.nesting_level, 0)  # @UndefinedVariable
+
+        # yes, its intended: call setUp on the grand parent class
+        super(StacklessTestCase, self).setUp()
+        self.assertEqual(stackless.getruncount(
+        ), 1, "Leakage from other tests, with %d tasklets still in the scheduler" % (stackless.getruncount() - 1))
+        if withThreads:
+            self.assertEqual(threading.activeCount(
+            ), 1, "Leakage from other threads, with %d threads running (1 expected)" % (threading.activeCount()))
+
+    def run(self, result=None):
+        c = stackless.channel()
+        c.preference = 1  # sender priority
+        self._ran_AsTaskletTestCase_setUp = False
+
+        def helper():
+            try:
+                c.send(super(AsTaskletTestCase, self).run(result))
+            except:
+                c.send_throw(*sys.exc_info())
+        stackless.tasklet(helper)()
+        result = c.receive()
+        assert self._ran_AsTaskletTestCase_setUp
+        return result
