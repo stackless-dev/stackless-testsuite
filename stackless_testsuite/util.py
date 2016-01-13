@@ -115,8 +115,8 @@ class StacklessTestCase(unittest.TestCase):
             next_ = current.next
             current.kill()
             current = next_
-        self.assertEqual(stackless.getruncount(
-        ), 1, "Leakage from this test, with %d tasklets still in the scheduler" % (stackless.getruncount() - 1))
+        run_count = stackless.getruncount()
+        self.assertEqual(run_count, 1, "Leakage from this test, with %d tasklets still in the scheduler" % (run_count - 1))
         if withThreads:
             expected_thread_count = len(self.__preexisting_threads)
             active_count = threading.active_count()
