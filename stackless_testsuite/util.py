@@ -93,16 +93,31 @@ except:
     withThreads = False
 
 
-class StacklessTestCase(unittest.TestCase):
+class SkipMixin(object):
+    def skipUnlessSoftswitching(self):
+        try:
+            enable_softswitch = stackless.enable_softswitch
+        except AttributeError:
+            def enable_softswitch(x):
+                return False
+        if not enable_softswitch(None):
+            self.skipTest("test requires softswitching")
+
+
+class StacklessTestCase(unittest.TestCase, SkipMixin):
     __preexisting_threads = None
+
+    def setUp_thread_counter(self):
+        if withThreads and self.__preexisting_threads is None:
+            self.__preexisting_threads = frozenset(threading.enumerate())
+            return len(self.__preexisting_threads)
+        return 1
 
     def setUp(self):
         self.assertEqual(stackless.getruncount(), 1, "Leakage from other tests, with %d tasklets still in the scheduler" % (stackless.getruncount() - 1))
+        expected_thread_count = self.setUp_thread_counter()
         if withThreads:
             active_count = threading.active_count()
-            if self.__preexisting_threads is None:
-                self.__preexisting_threads = frozenset(threading.enumerate())
-            expected_thread_count = len(self.__preexisting_threads)
             self.assertEqual(active_count, expected_thread_count, "Leakage from other threads, with %d threads running (%d expected)" % (active_count, expected_thread_count))
 
     def tearDown(self):
@@ -118,19 +133,18 @@ class StacklessTestCase(unittest.TestCase):
         run_count = stackless.getruncount()
         self.assertEqual(run_count, 1, "Leakage from this test, with %d tasklets still in the scheduler" % (run_count - 1))
         if withThreads:
-            expected_thread_count = len(self.__preexisting_threads)
+            preexisting_threads = self.__preexisting_threads
+            self.__preexisting_threads = None  # avoid pickling problems, see _addSkip
+            expected_thread_count = len(preexisting_threads)
             active_count = threading.active_count()
             if active_count > expected_thread_count:
                 activeThreads = set(threading.enumerate())
-                activeThreads -= self.__preexisting_threads
+                activeThreads -= preexisting_threads
                 self.assertNotIn(threading.current_thread(), activeThreads, "tearDown runs on the wrong thread.")
                 while activeThreads:
                     activeThreads.pop().join(0.5)
                 active_count = threading.active_count()
             self.assertEqual(active_count, expected_thread_count, "Leakage from other threads, with %d threads running (%d expected)" % (active_count, expected_thread_count))
-
-    SAFE_TESTCASE_ATTRIBUTES = unittest.TestCase(
-        methodName='run').__dict__.keys()
 
     def _addSkip(self, result, reason):
         # Remove non standard attributes. They could render the test case object unpickleable.
@@ -140,6 +154,13 @@ class StacklessTestCase(unittest.TestCase):
                     not isinstance(self.__dict__[k], (types.NoneType, basestring, int, long, float)):
                 del self.__dict__[k]
         super(StacklessTestCase, self)._addSkip(result, reason)
+
+_tc = StacklessTestCase(methodName='run')
+try:
+    _tc.setUp()
+    StacklessTestCase.SAFE_TESTCASE_ATTRIBUTES = _tc.__dict__.keys()
+finally:
+    del _tc
 
 
 class AsTaskletTestCase(StacklessTestCase):
@@ -152,11 +173,12 @@ class AsTaskletTestCase(StacklessTestCase):
 
         # yes, its intended: call setUp on the grand parent class
         super(StacklessTestCase, self).setUp()
+        expected_thread_count = self.setUp_thread_counter()
         self.assertEqual(stackless.getruncount(
         ), 1, "Leakage from other tests, with %d tasklets still in the scheduler" % (stackless.getruncount() - 1))
         if withThreads:
-            self.assertEqual(threading.activeCount(
-            ), 1, "Leakage from other threads, with %d threads running (1 expected)" % (threading.activeCount()))
+            active_count = threading.active_count()
+            self.assertEqual(active_count, expected_thread_count, "Leakage from other threads, with %d threads running (%d expected)" % (active_count, expected_thread_count))
 
     def run(self, result=None):
         c = stackless.channel()
