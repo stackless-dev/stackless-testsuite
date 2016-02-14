@@ -36,7 +36,7 @@ PROPERTY = (types.GetSetDescriptorType, types.MemberDescriptorType, property)
 try:
     long
 except NameError:
-    long = int
+    long = int  # @ReservedAssignment
 
 
 def _testAttributeTypeTemplate(self, getContainer=None, name=None, expected_type=None):
@@ -116,7 +116,7 @@ class StacklessTestCaseMixin(object):
             self.skipTest("test requires softswitching")
 
     def assertCallableWith0Args(self, func, additionalArg=None):
-        self.assertRaisesRegexp(TypeError, r"takes no arguments|expected 0 arguments", func, additionalArg)
+        self.assertRaisesRegex(TypeError, r"takes no arguments|expected 0 arguments", func, additionalArg)
 
     _NO_KWARGS_RE = r"takes no keyword arguments"
     _NO_KWARGS_RE = re.compile(_NO_KWARGS_RE)
@@ -172,8 +172,8 @@ class StacklessTestCaseMixin(object):
             else:
                 pass
         if not accept_arbitrary:
-            self.assertRaisesRegexp(TypeError, exc_msg,
-                                    func, *(args + [additionalArg]))
+            self.assertRaisesRegex(TypeError, exc_msg,
+                                   func, *(args + [additionalArg]))
         if nb_mandatory > 0:
             exc_msg = r"(takes|expected) at least {0} argument|Required argument '{1}' \(pos 1\) not found".format(nb_mandatory, names[0])
             if len(args) == nb_mandatory:
@@ -181,7 +181,7 @@ class StacklessTestCaseMixin(object):
                     exc_msg = r"takes exactly one argument"
                 else:
                     pass
-            self.assertRaisesRegexp(TypeError, exc_msg, func)
+            self.assertRaisesRegex(TypeError, exc_msg, func)
         # only required positional arguments
         yield func(*(args[:nb_mandatory]))
         # all positional arguments
@@ -207,6 +207,12 @@ class StacklessTestCaseMixin(object):
 
 class StacklessTestCase(unittest.TestCase, StacklessTestCaseMixin):
     __preexisting_threads = None
+
+    # 2.7 lacks assertRaisesRegex
+    try:
+        unittest.TestCase.assertRaisesRegex  # @UndefinedVariable
+    except AttributeError:
+        assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
 
     def setUp_thread_counter(self):
         if withThreads and self.__preexisting_threads is None:
@@ -247,14 +253,21 @@ class StacklessTestCase(unittest.TestCase, StacklessTestCaseMixin):
                 active_count = threading.active_count()
             self.assertEqual(active_count, expected_thread_count, "Leakage from other threads, with %d threads running (%d expected)" % (active_count, expected_thread_count))
 
-    def _addSkip(self, result, reason):
+    def __strip_attributes(self):
         # Remove non standard attributes. They could render the test case object unpickleable.
         # This is a hack, but it works fairly well.
         for k in list(self.__dict__.keys()):
             if k not in self.SAFE_TESTCASE_ATTRIBUTES and \
                     not isinstance(self.__dict__[k], (type(None), type(u""), type(b""), int, long, float)):
                 del self.__dict__[k]
-        super(StacklessTestCase, self)._addSkip(result, reason)
+    if sys.hexversion >= 0x3040000:
+        def _addSkip(self, result, test_case, reason):
+            self.__strip_attributes()
+            super(StacklessTestCase, self)._addSkip(result, test_case, reason)
+    else:
+        def _addSkip(self, result, reason):
+            self.__strip_attributes()
+            super(StacklessTestCase, self)._addSkip(result, reason)
 
 _tc = StacklessTestCase(methodName='run')
 try:

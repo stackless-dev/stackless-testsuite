@@ -29,7 +29,7 @@ if __name__ == '__main__':
 try:
     xrange
 except NameError:
-    xrange = range
+    xrange = range  # @ReservedAssignment
 
 
 if hasattr(threading, "main_thread"):
@@ -610,7 +610,7 @@ class TaskletTest(StacklessTestCase):
         self.assertListEqual([2], result)
         self.assert_state_blocked(t, tempval="ignore")
         # change state
-        self.assertRaisesRegexp(TestError, "f_send_throw", c.receive)
+        self.assertRaisesRegex(TestError, "f_send_throw", c.receive)
         # check state
         self.assert_state_scheduled(t)
         # cleanup
@@ -634,7 +634,7 @@ class TaskletTest(StacklessTestCase):
         self.assertListEqual([3], result)
         self.assert_state_blocked(t, tempval="ignore")
         # change state
-        self.assertRaisesRegexp(TestError, "f_send_exception", c.receive)
+        self.assertRaisesRegex(TestError, "f_send_exception", c.receive)
         # check state
         self.assert_state_scheduled(t)
         # cleanup
@@ -698,11 +698,11 @@ class TaskletTest(StacklessTestCase):
         # check state
         self.assert_state_scheduled(t)
         # change state
-        self.assertRaisesRegexp(RuntimeError, "tasklet is scheduled", t.bind)
+        self.assertRaisesRegex(RuntimeError, "tasklet is scheduled", t.bind)
 
         # prepare
         t = stackless.tasklet(nop)()
         # check state
         self.assert_state_scheduled(t)
         # change state
-        self.assertRaisesRegexp(RuntimeError, "tasklet is scheduled", t.bind, None)
+        self.assertRaisesRegex(RuntimeError, "tasklet is scheduled", t.bind, None)

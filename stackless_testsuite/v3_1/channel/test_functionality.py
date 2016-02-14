@@ -28,11 +28,11 @@ if __name__ == '__main__':
 try:
     xrange  # @UndefinedVariable
 except NameError:
-    xrange = range
+    xrange = range  # @ReservedAssignment
 try:
     long  # @UndefinedVariable
 except NameError:
-    long = int
+    long = int  # @ReservedAssignment
 
 
 class ChannelTest(StacklessTestCase):
@@ -157,10 +157,10 @@ class ChannelTest(StacklessTestCase):
         self.assertEqual(1, c.preference)
         c.preference = -2
         self.assertEqual(-1, c.preference)
-        self.assertRaisesRegexp(TypeError, "must be set to an integer", setattr, c, "preference", 2.5)
+        self.assertRaisesRegex(TypeError, "must be set to an integer", setattr, c, "preference", 2.5)
         if int is not long:
-            self.assertRaisesRegexp(TypeError, "must be set to an integer",
-                                    setattr, c, "preference", 9999999999999999999999999999999999999999999)
+            self.assertRaisesRegex(TypeError, "must be set to an integer",
+                                   setattr, c, "preference", 9999999999999999999999999999999999999999999)
         c.preference = True
         self.assertEqual(1, c.preference)
 
@@ -182,10 +182,10 @@ class ChannelTest(StacklessTestCase):
         self.assertEqual(c.schedule_all, 0)
         c.schedule_all = True
         self.assertEqual(c.schedule_all, 1)
-        self.assertRaisesRegexp(TypeError, "must be set to a bool or integer", setattr, c, "schedule_all", 2.5)
+        self.assertRaisesRegex(TypeError, "must be set to a bool or integer", setattr, c, "schedule_all", 2.5)
         if int is not long:
-            self.assertRaisesRegexp(TypeError, "preference must be set to a bool or integer",
-                                    setattr, c, "schedule_all", 9999999999999999999999999999999999999999999)
+            self.assertRaisesRegex(TypeError, "preference must be set to a bool or integer",
+                                   setattr, c, "schedule_all", 9999999999999999999999999999999999999999999)
 
     def testAttr_balance(self):
         c = stackless.channel()

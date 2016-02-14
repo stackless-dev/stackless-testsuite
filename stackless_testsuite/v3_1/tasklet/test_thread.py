@@ -246,7 +246,7 @@ class TestRebind(StacklessTestCase):
     def test_rebind_nontrivial(self):
         end, task = self.create_remote_tasklet(nontrivial=True)
         try:
-            self.assertRaisesRegexp(RuntimeError, ".*", task.bind_thread)
+            self.assertRaisesRegex(RuntimeError, ".*", task.bind_thread)
         finally:
             end()
 
@@ -346,7 +346,7 @@ class DeadThreadTest(RemoteTaskletTests):
 
     def test_bind_runnable(self):
         theThread, t = self.create_thread_task()
-        self.assertRaisesRegexp(RuntimeError, "runnable", t.bind_thread)
+        self.assertRaisesRegex(RuntimeError, "runnable", t.bind_thread)
         theThread.join()
 
     def test_death(self):
@@ -512,7 +512,7 @@ class SchedulingBindThreadTests(RemoteTaskletTests):
     def test_rebind_runnable(self):
         theThread, t = self.create_thread_task(self.tasklet_runnable_action)
         with theThread:
-            self.assertRaisesRegexp(RuntimeError, 'runnable', t.bind_thread)
+            self.assertRaisesRegex(RuntimeError, 'runnable', t.bind_thread)
             self.channel.send(None)
 
 
@@ -528,7 +528,7 @@ class SwitchTest(RemoteTaskletTests):
         theThread, t = self.create_thread_task()
         with theThread:
             self.assertTrue(t.paused)
-            self.assertRaisesRegexp(RuntimeError, "different thread", t.switch)
+            self.assertRaisesRegex(RuntimeError, "different thread", t.switch)
 
 
 class SetupFromDifferentThreadTest(RemoteTaskletTests):
@@ -540,7 +540,6 @@ class SetupFromDifferentThreadTest(RemoteTaskletTests):
         self.event.set()
 
     def test_setup_from_other_thread(self):
-        self.skipTest("crash, see https://bitbucket.org/stackless-dev/stackless/issue/60")
         theThread, t = self.create_thread_task()
         t.setup()
         theThread.join()

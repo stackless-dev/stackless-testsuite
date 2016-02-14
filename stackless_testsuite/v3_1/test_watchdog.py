@@ -371,26 +371,26 @@ class TestDeadlock(StacklessTestCase):
     def testReceiveOnMain(self):
         """Thest that we get a deadock exception if main tries to block"""
         self.c = stackless.channel()
-        self.assertRaisesRegexp(RuntimeError, "Deadlock", self.c.receive)
+        self.assertRaisesRegex(RuntimeError, "Deadlock", self.c.receive)
 
     def test_main_receiving_endttasklet(self):
         """Test that the main tasklet is interrupted when a tasklet ends"""
         c = stackless.channel()
         stackless.tasklet(lambda: None)()
-        self.assertRaisesRegexp(RuntimeError, "receiving", c.receive)
+        self.assertRaisesRegex(RuntimeError, "receiving", c.receive)
 
     def test_main_sending_enddtasklet(self):
         """Test that the main tasklet is interrupted when a tasklet ends"""
         c = stackless.channel()
         stackless.tasklet(lambda: None)()
-        self.assertRaisesRegexp(RuntimeError, "sending", c.send, None)
+        self.assertRaisesRegex(RuntimeError, "sending", c.send, None)
 
     def test_main_gets_exception(self):
         """Test that a custom exception is transfered to a blocked main"""
         def task():
             raise ZeroDivisionError("mumbai")
         stackless.tasklet(task)()
-        self.assertRaisesRegexp(
+        self.assertRaisesRegex(
             ZeroDivisionError, "mumbai", stackless.channel().receive)
 
     @require_one_thread
@@ -400,7 +400,7 @@ class TestDeadlock(StacklessTestCase):
 
         def task():
             c = stackless.channel()
-            self.assertRaisesRegexp(RuntimeError, "Deadlock", c.receive)
+            self.assertRaisesRegex(RuntimeError, "Deadlock", c.receive)
             mc.send(None)
         stackless.tasklet(task)()
         mc.receive()
@@ -414,7 +414,7 @@ class TestDeadlock(StacklessTestCase):
             stackless.channel().receive()
         stackless.tasklet(task)()
         # main should get the tasklet's exception
-        self.assertRaisesRegexp(RuntimeError, "Deadlock", mc.receive)
+        self.assertRaisesRegex(RuntimeError, "Deadlock", mc.receive)
 
     def test_error_propagation_when_not_deadlock(self):
         def task1():
@@ -425,7 +425,7 @@ class TestDeadlock(StacklessTestCase):
 
         stackless.tasklet(task1)()
         stackless.tasklet(task2)()
-        self.assertRaisesRegexp(ZeroDivisionError, "bar", stackless.run)
+        self.assertRaisesRegex(ZeroDivisionError, "bar", stackless.run)
 
 
 class TestNewWatchdog(StacklessTestCase):
@@ -499,7 +499,7 @@ class TestNewWatchdog(StacklessTestCase):
 
         def runner_func():
             stackless.tasklet(errfunc)()
-            self.assertRaisesRegexp(RuntimeError, "foo", stackless.run)
+            self.assertRaisesRegex(RuntimeError, "foo", stackless.run)
             self.done += 1
         stackless.tasklet(runner_func)()
         stackless.run()
