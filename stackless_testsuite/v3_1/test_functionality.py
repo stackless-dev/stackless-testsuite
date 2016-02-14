@@ -20,7 +20,10 @@ from __future__ import absolute_import, print_function, division
 
 import stackless
 import sys
-import thread
+try:
+    import thread
+except ImportError:
+    import _thread as thread
 import threading
 import subprocess
 from stackless_testsuite.util import StacklessTestCase
@@ -64,20 +67,88 @@ class AtomicTest(StacklessTestCase):
 class OtherTestCases(StacklessTestCase):
     """Test various functions and computed attributes of the module stackless"""
 
+    def testSig_run(self):
+        """Test, that run accepts the correct arguments
+
+        timeout=0, threadblock=False, soft=False, ignore_nesting=False, totaltimeout=False
+
+        Fortunately, we can call stackless.run with an empty queue for this test.
+        """
+        for result in self.checkSignatureNamedArgs(stackless.run, 0, None, 'timeout', 0, 'threadblock', False, 'soft', False, 'ignore_nesting', False, 'totaltimeout', False):
+            self.assertIsNone(result)
+
+    def testSig_schedule(self):
+        # schedule(retval=stackless.current)
+        done = []
+
+        def f(self):
+            for result in self.checkSignatureNamedArgs(stackless.schedule, 0, None, "retval", stackless.current):
+                self.assertIs(stackless.current, result)
+            o = object()
+            self.assertIs(o, stackless.schedule(o))
+            done.append(True)
+        t = stackless.tasklet(f)(self)
+        self.addCleanup(t.kill)
+        stackless.run()
+        self.assertListEqual([True], done)
+
+    def testSig_schedule_remove(self):
+        # schedule_remove(retval=stackless.current)
+        done = []
+
+        def f(self):
+            tlet = stackless.current
+            for result in self.checkSignatureNamedArgs(stackless.schedule_remove, 0, None, "retval", tlet):
+                self.assertIs(tlet, result)
+            o = object()
+            self.assertIs(o, stackless.schedule_remove(o))
+            done.append(True)
+
+        def g(tlet):
+            while tlet.alive:
+                tlet.insert()
+                stackless.schedule()
+
+        t = stackless.tasklet(f)(self)
+        self.addCleanup(t.kill)
+        t2 = stackless.tasklet(g)(t)
+        self.addCleanup(t2.kill)
+        stackless.run()
+        self.assertListEqual([True], done)
+
+    def testSig_get_thread_info(self):
+        # get_thread_info(thread_id)
+        threadid = thread.get_ident()
+        for result in self.checkSignatureNamedArgs(stackless.get_thread_info, 0, None, "thread_id", threadid):
+            self.assertIsInstance(result, tuple)
+            self.assertEqual(3, len(result))
+
+    def testSig_getcurrent(self):
+        # getcurrent()
+        self.assertCallableWith0Args(stackless.getcurrent)
+
+    def testSig_getmain(self):
+        # getmain()
+        self.assertCallableWith0Args(stackless.getmain)
+
+    def testSig_getruncount(self):
+        # getruncount()
+        self.assertCallableWith0Args(stackless.getruncount)
+
     def testStackless(self):
         # test for the reference to itself
         self.assertIs(stackless, stackless.stackless)
 
     def testMain(self):
         """test stackless.main"""
-        main1 = stackless.main  # @UndefinedVariable
+        main1 = stackless.main
         main2 = stackless.getmain()
         self.assertIs(main1, main2)
         self.assertIsInstance(main1, stackless.tasklet)
 
     def testCurrent(self):
         """test stackless.current - part 1"""
-        current1 = stackless.current  # @UndefinedVariable
+        current1 = stackless.current
         current2 = stackless.getcurrent()
         self.assertIs(current1, current2)
         self.assertIsInstance(current1, stackless.tasklet)
@@ -87,17 +158,17 @@ class OtherTestCases(StacklessTestCase):
         current = []
 
         def f():
-            current.append(stackless.current)  # @UndefinedVariable
+            current.append(stackless.current)
 
         task = stackless.tasklet().bind(f, ())
         task.run()
         self.assertIs(current[0], task)
-        self.assertIsNot(task, stackless.current)  # @UndefinedVariable
+        self.assertIsNot(task, stackless.current)
 
     def testMainIsCurrentInThread(self):
         """test, that stackless.main is stackless.current in a new thread"""
         def f():
-            self.assertIs(stackless.main, stackless.current)  # @UndefinedVariable
+            self.assertIs(stackless.main, stackless.current)
         t = threading.Thread(target=f)
         t.start()
         t.join()
@@ -109,7 +180,7 @@ class OtherTestCases(StacklessTestCase):
 
     def testRuncount(self):
         """Test stackless.runcount. It is a per thread value"""
-        rc1 = stackless.runcount  # @UndefinedVariable
+        rc1 = stackless.runcount
         rc2 = stackless.getruncount()
         self.assertIsInstance(rc1, int)
         self.assertIsInstance(rc2, int)
@@ -119,13 +190,13 @@ class OtherTestCases(StacklessTestCase):
         c = []
 
         def f():
-            c.append(stackless.runcount)  # @UndefinedVariable
+            c.append(stackless.runcount)
             c.append(stackless.getruncount())
 
         tlet = stackless.tasklet(f)()
 
         # runcount is now at least 2
-        self.assertEqual(stackless.runcount, rc1 + 1)  # @UndefinedVariable
+        self.assertEqual(stackless.runcount, rc1 + 1)
         self.assertEqual(stackless.getruncount(), rc1 + 1)
 
         t = threading.Thread(target=f)
@@ -137,7 +208,7 @@ class OtherTestCases(StacklessTestCase):
         tlet.run()
 
         self.assertListEqual(c, [1, 1, rc1 + 1, rc1 + 1])
-        self.assertEqual(stackless.runcount, rc1)  # @UndefinedVariable
+        self.assertEqual(stackless.runcount, rc1)
         self.assertEqual(stackless.getruncount(), rc1)
 
 
@@ -152,7 +223,7 @@ class GetThreadInfoTest(StacklessTestCase):
 
         task = stackless.tasklet().bind(f, ())
         task.run()
-        self.assertIs(info[0], stackless.main)  # @UndefinedVariable
+        self.assertIs(info[0], stackless.main)
         self.assertIs(info[1], task)
         self.assertEqual(info[2], 2)
 
@@ -167,24 +238,10 @@ class GetThreadInfoTest(StacklessTestCase):
 
     def testThreads_main(self):
         mti = main_thread_id()
-        st = stackless.threads  # @UndefinedVariable
+        st = stackless.threads
         self.assertIsInstance(st, list)
         # must contain at least the main thread id at index 0
         self.assertGreaterEqual(len(st), 1)
         self.assertEqual(st[0], mti)
         self.assertSetEqual(
             frozenset(st), frozenset(sys._current_frames().keys()))
-
-
-class SchedulerTest(StacklessTestCase):
-    def testRun_args(self):
-        """Test, that run accepts the correct arguments
-
-        timeout=0, threadblock=False, soft=False, ignore_nesting=False, totaltimeout=False
-
-        Fortunately, we can call stackless.run with an empty queue for this test.
-        """
-        stackless.run()
-        stackless.run(**dict(timeout=0, threadblock=False, soft=False, ignore_nesting=False, totaltimeout=False))
-        stackless.run(0, False, False, False, False)
-        self.assertRaisesRegexp(TypeError, r"takes at most 5 arguments", stackless.run, 0, False, False, False, False, None)

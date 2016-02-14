@@ -27,7 +27,10 @@ import time
 from stackless_testsuite.util import StacklessTestCase, AsTaskletTestCase
 try:
     import threading
-    import thread
+    try:
+        import thread
+    except ImportError:
+        import _thread as thread
     withThreads = True
 except:
     withThreads = False
@@ -537,6 +540,7 @@ class SetupFromDifferentThreadTest(RemoteTaskletTests):
         self.event.set()
 
     def test_setup_from_other_thread(self):
+        self.skipTest("crash, see https://bitbucket.org/stackless-dev/stackless/issue/60")
         theThread, t = self.create_thread_task()
         t.setup()
         theThread.join()

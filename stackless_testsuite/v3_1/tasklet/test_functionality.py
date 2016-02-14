@@ -26,6 +26,12 @@ if __name__ == '__main__':
     import stackless_testsuite.v3_1.tasklet  # @NoMove @UnusedImport
     __package__ = "stackless_testsuite.v3_1.tasklet"  # @ReservedAssignment
 
+try:
+    xrange
+except NameError:
+    xrange = range
+
+
 if hasattr(threading, "main_thread"):
     # Python 3.4 and later
     def main_thread_id():
@@ -51,85 +57,133 @@ class TaskletTest(StacklessTestCase):
     # Test method signatures
     #
     def testSig_constructor(self):
-        self.assertIsInstance(stackless.tasklet(), stackless.tasklet)
-        self.assertIsInstance(stackless.tasklet(func=nop, args=(), kwargs={}), stackless.tasklet)
-        self.assertRaisesRegexp(TypeError, r"takes at most 3 arguments", stackless.tasklet, None, None, None, None)
+        self.skipTest("crash, see https://bitbucket.org/stackless-dev/stackless/issues/77/null-pointer-access-in-stackless-module")
+        # tasklet(func=None, args=None, kwargs=None)
+        for ret in self.checkSignatureNamedArgs(stackless.tasklet, 0, None, "func", None, "args", None, "kwargs", None):
+            self.assertIsInstance(ret, stackless.tasklet)
 
     def testSig_bind(self):
-        def f():
-            pass
+        # tasklet.bind(func=None, args=None, kwargs=None)
         t = stackless.tasklet()
-        self.assertIsInstance(t.bind(), stackless.tasklet)
-        self.assertIsInstance(t.bind(func=nop, args=(), kwargs={}), stackless.tasklet)
-        self.assertRaisesRegexp(TypeError, r"takes at most 3 arguments", t.bind, None, None, None, None)
+        for ret in self.checkSignatureNamedArgs(t.bind, 0, None, "func", nop, "args", (), "kwargs", {}):
+            self.assertIsInstance(ret, stackless.tasklet)
 
     def testSig_setup(self):
+        # setup(*args, **kw)
         t = stackless.tasklet(nop)
-        self.assertIsInstance(t.setup(), stackless.tasklet)
-        t.remove().bind(nop)
-        # test for setup(*args, **kw)
-        t.setup(*range(20), completely_nonsense_name=True, another_name=False)
-        t.kill()
+        self.addCleanup(t.kill)
+        for res in self.checkSignatureArbitraryArgsAndKw(t.setup, 0, *range(20)):
+            self.assertIsInstance(res, stackless.tasklet)
+            t.remove().bind(nop)
+
+    def testSig___call__(self):
+        # __call__(*args, **kw)
+        t = stackless.tasklet(nop)
+        self.addCleanup(t.kill)
+        for res in self.checkSignatureArbitraryArgsAndKw(t, 0, *range(20)):
+            self.assertIsInstance(res, stackless.tasklet)
+            t.remove().bind(nop)
 
     def testSig_insert(self):
         t = stackless.tasklet(nop, ())
-        self.assertRaisesRegexp(TypeError, r"takes no arguments", t.insert, None)
-        t.insert()
+        self.assertCallableWith0Args(t.insert)
+        self.assertIs(t, t.insert())
         t.kill()
 
     def testSig_remove(self):
         t = stackless.tasklet(nop)()
-        self.assertRaisesRegexp(TypeError, r"takes no arguments", t.remove, None)
-        t.remove()
+        self.assertCallableWith0Args(t.remove)
+        self.assertIs(t, t.remove())
         t.kill()
 
     def testSig_run(self):
         t = stackless.tasklet(nop)()
-        self.assertRaisesRegexp(TypeError, r"takes no arguments", t.run, None)
-        t.run()
+        self.assertCallableWith0Args(t.run)
+        o = object()
+        stackless.current.tempval = o
+        self.assertIs(o, t.run())
 
     def testSig_switch(self):
         t = stackless.tasklet(nop)()
-        self.assertRaisesRegexp(TypeError, r"takes no arguments", t.switch, None)
-        t.switch()
+        self.assertCallableWith0Args(t.switch)
+        o = object()
+        stackless.current.tempval = o
+        self.assertIs(o, t.switch())
 
     def testSig_raise_exception(self):
         # documented: raise_exception(exc_class, *args)
         # implemented: raise_exception(*args) with a check for args[0] being an Exception
-        t = stackless.tasklet(nop)()
-        # TypeError would be correct, bit Stackless Python raises ValueError
-        self.assertRaises((TypeError, ValueError), t.raise_exception)
-        self.assertRaisesRegexp(TypeError, r"unexpected keyword argument|takes no keyword arguments", t.raise_exception, foo_bar_blub=True)
-        t.raise_exception(TaskletExit, *range(10))
+        done = []
+
+        def f():
+            while True:
+                try:
+                    stackless.schedule_remove()
+                except TestError:
+                    done.append(True)
+        t = stackless.tasklet(f)()
+        stackless.run()
+        self.addCleanup(t.kill)
+        for ret in self.checkSignatureArbitraryArgs(t.raise_exception, 1, "exc_class", TestError, *xrange(20)):
+            self.assertIsNone(ret)
+        self.assertTrue(done)
 
     def testSig_throw(self):
         # throw(exc=None, val=None, tb=None, pending=False)
-        t = stackless.tasklet(nop)()
-        self.assertRaisesRegexp(TypeError, "Required argument 'exc' \(pos 1\) not found", t.throw)
-        self.assertRaisesRegexp(TypeError, "takes at most 4 arguments", t.throw, TaskletExit, None, None, False, None)
-        t.throw(exc=TaskletExit, val=TaskletExit(), tb=None, pending=False)
+        done = []
+
+        def f():
+            while True:
+                try:
+                    stackless.schedule_remove()
+                except TestError:
+                    done.append(True)
+        t = stackless.tasklet(f)()
+        stackless.run()
+        self.addCleanup(t.kill)
+        for ret in self.checkSignatureNamedArgs(t.throw, 1, None, "exc", TestError, "val", None, "tb", None, "pending", False):
+            self.assertIsNone(ret)
+        self.assertTrue(done)
 
     def testSig_kill(self):
         # kill(pending=False)
         t = stackless.tasklet(nop)()
-        t.kill()
-        t = stackless.tasklet(nop)()
-        self.assertRaisesRegexp(TypeError, "takes at most 1 argument", t.kill, False, None)
-        t.kill(pending=False)
+        t.tempval = 1
+        for ret in self.checkSignatureNamedArgs(t.kill, 0, None, "pending", False):
+            self.assertIsNone(ret)
+            t = stackless.tasklet(nop)()
 
     def testSig_set_atomic(self):
         # set_atomic(flag)
         # Stackless: keyword argument not supported
         t = stackless.tasklet()
-        self.assertRaisesRegexp(TypeError, "takes exactly one argument", t.set_atomic)
+        for ret in self.checkSignatureNamedArgs(t.set_atomic, 1, None, "flag", False):
+            self.assertIsInstance(ret, bool)
 
     def testSig_bind_thread(self):
         # bind_thread([thread_id])
         # Stackless: keyword argument not supported
         t = stackless.tasklet(nop, ())
-        self.assertRaisesRegexp(TypeError, "takes at most 1 argument", t.bind_thread, None, None)
-        t.bind_thread()
-        t.bind_thread(-1)
+        for ret in self.checkSignatureNamedArgs(t.bind_thread, 0, None, "thread_id", -1):
+            self.assertIsNone(ret)
+
+    def testAttr_prev_next(self):
+        t = stackless.tasklet()
+        self.addCleanup(t.kill)
+        self.assertIsNone(t.prev)
+        self.assertIsNone(t.next)
+        t.bind(nop)
+        self.assertIsNone(t.prev)
+        self.assertIsNone(t.next)
+        t()
+        self.assertIs(stackless.main, t.prev)
+        self.assertIs(stackless.current, t.next)
+        t2 = stackless.tasklet(nop)()
+        self.addCleanup(t2.kill)
+        self.assertIs(stackless.current, t.prev)
+        self.assertIs(t2, t.next)
+        self.assertIs(t, t2.prev)
+        self.assertIs(stackless.current, t2.next)
 
     #
     # Test state transitions from stackless/tasklets.html#tasklet-life-cycle
@@ -167,38 +221,56 @@ class TaskletTest(StacklessTestCase):
         self.check_flag(tlet, "is_main", is_main)
 
     def assert_state_notalive(self, tlet, **kw):
-        self.check_tasklet_flags(tlet, restorable=True, **kw)
+        kw.setdefault("restorable", True)
+        self.check_tasklet_flags(tlet, **kw)
         if kw.get("tempval") != "ignore":
             self.assertIsNone(tlet.tempval)
 
     def assert_state_bound(self, tlet, func, **kw):
-        self.check_tasklet_flags(tlet, restorable=True, **kw)
+        kw.setdefault("restorable", True)
+        self.check_tasklet_flags(tlet, **kw)
         if kw.get("tempval") != "ignore":
             self.assertIs(func, tlet.tempval)
 
     def assert_state_scheduled(self, tlet, **kw):
-        self.check_tasklet_flags(tlet, alive=True, scheduled=True, restorable=True, **kw)
+        kw.setdefault("alive", True)
+        kw.setdefault("scheduled", True)
+        kw.setdefault("restorable", True)
+        self.check_tasklet_flags(tlet, **kw)
         if kw.get("tempval") != "ignore":
             self.assertIsNone(tlet.tempval)
 
     def assert_state_paused(self, tlet, **kw):
-        self.check_tasklet_flags(tlet, alive=True, paused=True, restorable=True, **kw)
+        kw.setdefault("alive", True)
+        kw.setdefault("paused", True)
+        kw.setdefault("restorable", True)
+        self.check_tasklet_flags(tlet, **kw)
         if kw.get("tempval") != "ignore":
             self.assertIsNone(tlet.tempval)
 
     def assert_state_current(self, tlet, **kw):
-        self.check_tasklet_flags(tlet, alive=True, restorable=True, is_current=True, scheduled=True, **kw)
+        kw.setdefault("alive", True)
+        kw.setdefault("is_current", True)
+        kw.setdefault("scheduled", True)
+        kw.setdefault("restorable", True)
+        self.check_tasklet_flags(tlet, **kw)
         if kw.get("tempval") != "ignore":
             self.assertIsNone(tlet.tempval)
 
     def assert_state_scheduler(self, tlet, **kw):
         """tasklet has called stackless.run()"""
-        self.check_tasklet_flags(tlet, alive=True, paused=True, **kw)
+        kw.setdefault("alive", True)
+        kw.setdefault("paused", True)
+        self.check_tasklet_flags(tlet, **kw)
         if kw.get("tempval") != "ignore":
             self.assertIsNone(tlet.tempval)
 
     def assert_state_blocked(self, tlet, **kw):
-        self.check_tasklet_flags(tlet, alive=True, restorable=True, blocked=True, scheduled=True, **kw)
+        kw.setdefault("alive", True)
+        kw.setdefault("scheduled", True)
+        kw.setdefault("blocked", True)
+        kw.setdefault("restorable", True)
+        self.check_tasklet_flags(tlet, **kw)
         if kw.get("tempval") != "ignore":
             self.assertIsNone(tlet.tempval)
 
@@ -375,9 +447,9 @@ class TaskletTest(StacklessTestCase):
 
         def f_run(self, other_tlet):
             self.assert_state_current(t)
-            self.assert_state_scheduled(other_tlet, is_main=True)
+            self.assert_state_scheduled(other_tlet, is_main=True, restorable="ignore")
             result.append(0)
-        t.bind(f_run, (self, stackless.current))  # @UndefinedVariable
+        t.bind(f_run, (self, stackless.current))
         # check state
         self.assert_state_paused(t)
         # change state
@@ -389,11 +461,11 @@ class TaskletTest(StacklessTestCase):
         # Variant using switch
         def f_switch(self, other_tlet):
             self.assert_state_current(t)
-            self.assert_state_paused(other_tlet, is_main=True)
+            self.assert_state_paused(other_tlet, is_main=True, restorable="ignore")
             result.append(1)
 
         del result[:]
-        t.bind(f_switch, (self, stackless.current))  # @UndefinedVariable
+        t.bind(f_switch, (self, stackless.current))
         # check state
         self.assert_state_paused(t)
         # change state
@@ -409,9 +481,9 @@ class TaskletTest(StacklessTestCase):
 
         def f_run(self, other_tlet):
             self.assert_state_current(t)
-            self.assert_state_scheduled(other_tlet, is_main=True)
+            self.assert_state_scheduled(other_tlet, is_main=True, restorable="ignore")
             result.append(0)
-        t.bind(f_run).setup(self, stackless.current)  # @UndefinedVariable
+        t.bind(f_run).setup(self, stackless.current)
         # check state
         self.assert_state_scheduled(t)
         # change state
@@ -423,11 +495,11 @@ class TaskletTest(StacklessTestCase):
         # Variant using switch
         def f_switch(self, other_tlet):
             self.assert_state_current(t)
-            self.assert_state_paused(other_tlet, is_main=True)
+            self.assert_state_paused(other_tlet, is_main=True, restorable="ignore")
             result.append(1)
 
         del result[:]
-        t.bind(f_switch).setup(self, stackless.current)  # @UndefinedVariable
+        t.bind(f_switch).setup(self, stackless.current)
         # check state
         self.assert_state_scheduled(t)
         # change state
@@ -443,7 +515,7 @@ class TaskletTest(StacklessTestCase):
             result.append(2)
 
         del result[:]
-        t.bind(f_stackless_run).setup(self, stackless.current)  # @UndefinedVariable
+        t.bind(f_stackless_run).setup(self, stackless.current)
         # check state
         self.assert_state_scheduled(t)
         # change state
