@@ -26,11 +26,17 @@ import types
 import inspect
 import sys
 import unittest
+import re
 import stackless
 
 FUNCTION = object()
 ROUTINE = object()
 PROPERTY = (types.GetSetDescriptorType, types.MemberDescriptorType, property)
+
+try:
+    long
+except NameError:
+    long = int
 
 
 def _testAttributeTypeTemplate(self, getContainer=None, name=None, expected_type=None):
@@ -93,7 +99,13 @@ except:
     withThreads = False
 
 
-class SkipMixin(object):
+def require_one_thread(testcase):
+    if withThreads:
+        return unittest.skipIf(threading.active_count() > 1, "Test requires, that only a single thread is active")(testcase)
+    return testcase
+
+
+class StacklessTestCaseMixin(object):
     def skipUnlessSoftswitching(self):
         try:
             enable_softswitch = stackless.enable_softswitch
@@ -103,8 +115,97 @@ class SkipMixin(object):
         if not enable_softswitch(None):
             self.skipTest("test requires softswitching")
 
+    def assertCallableWith0Args(self, func, additionalArg=None):
+        self.assertRaisesRegexp(TypeError, r"takes no arguments|expected 0 arguments", func, additionalArg)
 
-class StacklessTestCase(unittest.TestCase, SkipMixin):
+    _NO_KWARGS_RE = r"takes no keyword arguments"
+    _NO_KWARGS_RE = re.compile(_NO_KWARGS_RE)
+
+    def checkSignatureArbitraryArgsAndKw(self, func, nb_mandatory, *namesAndArgs):
+        for r in self._checkSignature(func, nb_mandatory, "both", None, *namesAndArgs):
+            yield r
+
+    def checkSignatureArbitraryArgs(self, func, nb_mandatory, *namesAndArgs):
+        for r in self._checkSignature(func, nb_mandatory, "args", None, *namesAndArgs):
+            yield r
+
+    def checkSignatureArbitraryKw(self, func, nb_mandatory, *namesAndArgs):
+        for r in self._checkSignature(func, nb_mandatory, "kw", None, *namesAndArgs):
+            yield r
+
+    def checkSignatureNamedArgs(self, func, nb_mandatory, additionalArg, *namesAndArgs):
+        for r in self._checkSignature(func, nb_mandatory, False, additionalArg, *namesAndArgs):
+            yield r
+
+    def _checkSignature(self, func, nb_mandatory, accept_arbitrary, additionalArg, *namesAndArgs):
+        # check arguments and build the argument list
+        self.assertIsInstance(nb_mandatory, int)
+        self.assertGreaterEqual(nb_mandatory, 0)
+        self.assertGreaterEqual(len(namesAndArgs) / 2, nb_mandatory)
+        if not accept_arbitrary:
+            self.assertGreaterEqual(len(namesAndArgs), 2)
+            self.assertTrue(len(namesAndArgs) % 2 == 0)
+            namesAndArgs_iter = iter(namesAndArgs)
+        else:
+            namesAndArgs_iter = iter(namesAndArgs[:nb_mandatory * 2])
+        args = []
+        names = []
+        kwargs = {}
+        for n in namesAndArgs_iter:
+            v = (getattr(namesAndArgs_iter, "next", None) or namesAndArgs_iter.__next__)()
+            self.assertIsInstance(n, str)
+            args.append(v)
+            names.append(n)
+            kwargs[n] = v
+        if accept_arbitrary:
+            for i, v in enumerate(namesAndArgs[nb_mandatory * 2:]):
+                n = "_arbitrary_nonsens_arg{0}_".format(i)
+                args.append(v)
+                names.append(n)
+                kwargs[n] = v
+
+        # try a call with args and additional arg
+        exc_msg = r"(takes|expected) at most {0} argument".format(len(args))
+        if len(args) == nb_mandatory:
+            if nb_mandatory == 1:
+                exc_msg = r"takes exactly one argument"
+            else:
+                pass
+        if not accept_arbitrary:
+            self.assertRaisesRegexp(TypeError, exc_msg,
+                                    func, *(args + [additionalArg]))
+        if nb_mandatory > 0:
+            exc_msg = r"(takes|expected) at least {0} argument|Required argument '{1}' \(pos 1\) not found".format(nb_mandatory, names[0])
+            if len(args) == nb_mandatory:
+                if nb_mandatory == 1:
+                    exc_msg = r"takes exactly one argument"
+                else:
+                    pass
+            self.assertRaisesRegexp(TypeError, exc_msg, func)
+        # only required positional arguments
+        yield func(*(args[:nb_mandatory]))
+        # all positional arguments
+        if accept_arbitrary != "kw":
+            yield func(*args)
+        # try a call with kwargs
+        try:
+            # all arguments as kwargs
+            if accept_arbitrary != "args":
+                yield func(**kwargs)
+            else:
+                # only required args as kw-args
+                yield func(**dict((k, kwargs[k]) for k in names[:nb_mandatory]))
+                return
+        except TypeError as e:
+            if not self._NO_KWARGS_RE.search(str(e)):
+                raise
+            return
+        else:
+            # only required args as kw-args
+            yield func(**dict((k, kwargs[k]) for k in names[:nb_mandatory]))
+
+
+class StacklessTestCase(unittest.TestCase, StacklessTestCaseMixin):
     __preexisting_threads = None
 
     def setUp_thread_counter(self):
@@ -149,9 +250,9 @@ class StacklessTestCase(unittest.TestCase, SkipMixin):
     def _addSkip(self, result, reason):
         # Remove non standard attributes. They could render the test case object unpickleable.
         # This is a hack, but it works fairly well.
-        for k in self.__dict__.keys():
+        for k in list(self.__dict__.keys()):
             if k not in self.SAFE_TESTCASE_ATTRIBUTES and \
-                    not isinstance(self.__dict__[k], (types.NoneType, basestring, int, long, float)):
+                    not isinstance(self.__dict__[k], (type(None), type(u""), type(b""), int, long, float)):
                 del self.__dict__[k]
         super(StacklessTestCase, self)._addSkip(result, reason)
 
@@ -169,7 +270,7 @@ class AsTaskletTestCase(StacklessTestCase):
     def setUp(self):
         self._ran_AsTaskletTestCase_setUp = True
         if stackless.enable_softswitch(None):
-            self.assertEqual(stackless.current.nesting_level, 0)  # @UndefinedVariable
+            self.assertEqual(stackless.current.nesting_level, 0)
 
         # yes, its intended: call setUp on the grand parent class
         super(StacklessTestCase, self).setUp()
