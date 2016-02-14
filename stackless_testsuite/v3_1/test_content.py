@@ -20,7 +20,10 @@ from __future__ import absolute_import, print_function, division
 
 import unittest
 import types
-import __builtin__
+try:
+    import __builtin__ as builtins
+except ImportError:
+    import builtins
 
 from stackless_testsuite import stackless_api
 from stackless_testsuite.util import FUNCTION, create_type_tests_for_module
@@ -71,11 +74,11 @@ class TestModuleContent(unittest.TestCase):
         self.assertFalse(missing, "Missing names {}".format(missing))
 
     def testTaskletExit(self):
-        # TaskletExit is special, as it is defined in __builtin__
+        # TaskletExit is special, as it is defined in builtins
         try:
-            te = __builtin__.TaskletExit
+            te = builtins.TaskletExit
         except AttributeError:
-            self.fail("__builtin__ does not contain TaskletExit")
+            self.fail("builtins (or on Python 2.7 __builtin__)  does not contain TaskletExit")
         # Stackless Documentation says so
         self.assertTrue(
             issubclass(te, SystemExit), "TaskletExit is not a subclass of SystemExit")

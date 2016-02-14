@@ -26,12 +26,16 @@ import sys
 import unittest
 import stackless
 import random
-import threading
-from stackless_testsuite.util import StacklessTestCase
+from stackless_testsuite.util import StacklessTestCase, require_one_thread
 
 if __name__ == '__main__':
     import stackless_testsuite.v3_1  # @NoMove @UnusedImport
     __package__ = "stackless_testsuite.v3_1"  # @ReservedAssignment
+
+try:
+    xrange
+except NameError:
+    xrange = range  # @ReservedAssignment
 
 
 # Helpers
@@ -66,16 +70,16 @@ class SimpleScheduler(object):
             task.insert()
 
     def autoschedule(self):
-        while stackless.runcount > 1:  # @UndefinedVariable
+        while stackless.runcount > 1:
             try:
                 returned = stackless.run(
                     self.bytecodes, soft=self.softSchedule)
 
-            except Exception, e:
+            except Exception as e:
 
                 # Can't clear off exception easily...
-                while stackless.runcount > 1:  # @UndefinedVariable
-                    stackless.current.next.kill()  # @UndefinedVariable
+                while stackless.runcount > 1:
+                    stackless.current.next.kill()
 
                 raise e
 
@@ -122,10 +126,10 @@ def runtask2(name):
 
 
 def runtask3(name):
-    exec """
+    exec ("""
 for ii in xrange(1000):
     pass
-"""
+""")
 
 
 def runtask4(name, channel):
@@ -147,10 +151,10 @@ def runtask5(name):
 
 
 def runtask_atomic_helper(count):
-    hold = stackless.current.set_atomic(1)  # @UndefinedVariable
+    hold = stackless.current.set_atomic(1)
     for ii in xrange(count):  # @UnusedVariable
         pass
-    stackless.current.set_atomic(hold)  # @UndefinedVariable
+    stackless.current.set_atomic(hold)
 
 
 def runtask_atomic(name):
@@ -293,7 +297,7 @@ class TestWatchdog(StacklessTestCase):
         # Run on watchdog
         t = pickle.loads(self.get_pickled_tasklet())
         t.insert()
-        while stackless.runcount > 1:  # @UndefinedVariable
+        while stackless.runcount > 1:
             stackless.run(100)
 
     def test_run_return(self):
@@ -354,14 +358,10 @@ class TestWatchdogSoft(TestWatchdog):
                     50000, soft=True, totaltimeout=True, ignore_nesting=True)
                 # print "**", stackless.runcount
                 self.assertTrue(
-                    stackless.runcount == 3 or stackless.runcount == 4)  # @UndefinedVariable
+                    stackless.runcount == 3 or stackless.runcount == 4)
         finally:
             for t in c:
                 t.kill()
-
-
-def require_one_thread(testcase):
-    return unittest.skipIf(threading.active_count() > 1, "Test requires, that only a single thread is active")(testcase)
 
 
 class TestDeadlock(StacklessTestCase):
@@ -486,7 +486,7 @@ class TestNewWatchdog(StacklessTestCase):
         """Test that the outer run() is indeed paused when the inner one completes"""
         def runner_func():
             stackless.run()
-            self.assertTrue(stackless.main.paused)  # @UndefinedVariable
+            self.assertTrue(stackless.main.paused)
             self.done += 1
         stackless.tasklet(runner_func)()
         stackless.run()
@@ -508,7 +508,7 @@ class TestNewWatchdog(StacklessTestCase):
     def test_manual_wakeup(self):
         """with nested run, the main tasklet is manually woken up, implicitly waking up the inner watchdogs."""
         def wakeupfunc():
-            stackless.main.run()  # @UndefinedVariable
+            stackless.main.run()
             self.done += 1
 
         def runner_func():
