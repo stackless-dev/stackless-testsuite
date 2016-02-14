@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2014 by Anselm Kruis
+# Copyright (c) 2016 by Anselm Kruis
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ from __future__ import absolute_import, print_function, division
 from setuptools import setup
 
 # The full version, including alpha/beta/rc tags.
-release = '0.0.0'
+release = '0.0.1'
 
 setup(
     name='stackless_testsuite',
@@ -30,7 +30,10 @@ setup(
     author='Anselm Kruis',
     author_email='a.kruis@science-computing.de',
     url='https://bitbucket.org/akruis/stackless-testsuite',
-    packages=['stackless_testsuite'],
+    packages=['stackless_testsuite',
+              'stackless_testsuite.v3_1',
+              'stackless_testsuite.v3_1.tasklet',
+              'stackless_testsuite.v3_1.channel'],
 
     # don't forget to add these files to MANIFEST.in too
     # package_data={'pyheapdump': ['examples/*.py']},
@@ -48,11 +51,12 @@ This test suite can be used by both projects.
 """,
     classifiers=["License :: OSI Approved :: Apache Software License",
                  "Programming Language :: Python :: 2.7",
+                 "Programming Language :: Python :: 3",
                  "Programming Language :: Python :: Implementation :: PyPy",
                  "Programming Language :: Python :: Implementation :: Stackless",
                  "Environment :: Console",
                  "Operating System :: OS Independent",
-                 "Development Status :: 3 - Alpha",  # hasn't been tested outside of flowGuide2
+                 "Development Status :: 3 - Alpha",
                  "Intended Audience :: Developers",
                  "Topic :: Software Development :: Libraries :: Python Modules",
                  ],
