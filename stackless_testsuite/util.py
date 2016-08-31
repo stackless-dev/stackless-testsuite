@@ -262,11 +262,11 @@ class StacklessTestCase(unittest.TestCase, StacklessTestCaseMixin):
                 del self.__dict__[k]
     if sys.hexversion >= 0x3040000:
         def _addSkip(self, result, test_case, reason):
-            self.__strip_attributes()
+            self.addCleanup(self.__strip_attributes)
             super(StacklessTestCase, self)._addSkip(result, test_case, reason)
     else:
         def _addSkip(self, result, reason):
-            self.__strip_attributes()
+            self.addCleanup(self.__strip_attributes)
             super(StacklessTestCase, self)._addSkip(result, reason)
 
 _tc = StacklessTestCase(methodName='run')
