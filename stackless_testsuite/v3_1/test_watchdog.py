@@ -607,12 +607,39 @@ class TestNewWatchdog(StacklessTestCase):
         stackless.run()
         self.assertEqual(self.done, 2)
 
-    @unittest.skip("Leaks tasklets and I don't understand the code")
+    def _test_watchdog_priority(self, soft):
+        self.awoken = 0
+
+        def runner_func(recursive, start):
+            if recursive:
+                stackless.tasklet(runner_func)(recursive - 1, start)
+            with stackless.atomic():
+                stackless.run(10000, soft=soft, totaltimeout=True, ignore_nesting=True)
+                a = self.awoken
+                self.awoken += 1
+            if recursive == start:
+                # we are the first watchdog
+                self.assertEqual(a, 0)  # the first to wake up
+                self.done += 1  # we were interrupted
+            t1.kill()
+            t2.kill()
+
+        def task():
+            while True:
+                for i in xrange(100):
+                    i = i
+                stackless.schedule()
+
+        t1 = stackless.tasklet(task)()
+        t2 = stackless.tasklet(task)()
+        t3 = stackless.tasklet(runner_func)(3, 3)
+        stackless.run()
+        self.assertEqual(self.done, 2)
+
     def test_watchdog_priority_soft(self):
         """Verify that outermost "real" watchdog gets awoken"""
         self._test_watchdog_priority(True)
 
-    @unittest.skip("Leaks tasklets and I don't understand the code")
     def test_watchdog_priority_hard(self):
         """Verify that outermost "real" watchdog gets awoken (hard)"""
         self._test_watchdog_priority(False)
