@@ -57,7 +57,6 @@ class TaskletTest(StacklessTestCase):
     # Test method signatures
     #
     def testSig_constructor(self):
-        self.skipTest("crash, see https://bitbucket.org/stackless-dev/stackless/issues/77/null-pointer-access-in-stackless-module")
         # tasklet(func=None, args=None, kwargs=None)
         for ret in self.checkSignatureNamedArgs(stackless.tasklet, 0, None, "func", None, "args", None, "kwargs", None):
             self.assertIsInstance(ret, stackless.tasklet)
