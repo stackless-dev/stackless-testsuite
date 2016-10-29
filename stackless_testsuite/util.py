@@ -113,7 +113,16 @@ class StacklessTestCaseMixin(object):
             def enable_softswitch(x):
                 return False
         if not enable_softswitch(None):
-            self.skipTest("test requires softswitching")
+            self.skipTest("test requires soft-switching")
+
+    def skipIfSoftswitching(self):
+        try:
+            enable_softswitch = stackless.enable_softswitch
+        except AttributeError:
+            def enable_softswitch(x):
+                return False
+        if enable_softswitch(None):
+            self.skipTest("test requires hard-switching")
 
     def assertCallableWith0Args(self, func, additionalArg=None):
         self.assertRaisesRegex(TypeError, r"takes no arguments|expected 0 arguments", func, additionalArg)
