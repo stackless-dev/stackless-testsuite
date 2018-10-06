@@ -1,0 +1,15 @@
+*~
+*.bak
+*.orig
+*.rej
+*.pyc
+*.pyo
+
+
+/build/
+/dist/
+*.egg
+*.egg-info
+/.settings
+/.project
+/.pydevproject

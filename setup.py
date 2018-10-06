@@ -28,8 +28,8 @@ setup(
     version=release,
     description='Test-suite for the stackless API',
     author='Anselm Kruis',
-    author_email='a.kruis@science-computing.de',
-    url='https://bitbucket.org/akruis/stackless-testsuite',
+    author_email='anselm.kruis@atos.net',
+    url='https://github.com/stackless-dev/stackless-testsuite',
     packages=['stackless_testsuite',
               'stackless_testsuite.v3_1',
               'stackless_testsuite.v3_1.tasklet',
@@ -39,10 +39,10 @@ setup(
     # package_data={'pyheapdump': ['examples/*.py']},
 
     long_description="""
-Test-Suit for stackless
------------------------
+Test-Suit for Stackless-Python
+------------------------------
 
-There are various implementations of the Python stackless API.
+There are various implementations of the Python Stackless API.
 
 * `Stackless <http://www.stackless.com>`_
 * `PyPy <http://pypy.org>`_
