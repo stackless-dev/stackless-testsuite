@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import, print_function, division
 
-from setuptools import setup
+from distutils.core import setup
 
 # The full version, including alpha/beta/rc tags.
 release = '0.0.1'
@@ -35,9 +35,6 @@ setup(
               'stackless_testsuite.v3_1.tasklet',
               'stackless_testsuite.v3_1.channel'],
 
-    # don't forget to add these files to MANIFEST.in too
-    # package_data={'pyheapdump': ['examples/*.py']},
-
     long_description="""
 Test-Suit for Stackless-Python
 ------------------------------
@@ -48,6 +45,10 @@ There are various implementations of the Python Stackless API.
 * `PyPy <http://pypy.org>`_
 
 This test suite can be used by both projects.
+
+Usage::
+   $ python -m unittest discover
+
 """,
     classifiers=["License :: OSI Approved :: Apache Software License",
                  "Programming Language :: Python :: 2.7",
@@ -63,5 +64,4 @@ This test suite can be used by both projects.
     keywords='stackless',
     license='Apache Software License',
     platforms="any",
-    test_suite="stackless_testsuite",
 )
