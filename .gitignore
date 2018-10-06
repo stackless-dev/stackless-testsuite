@@ -10,6 +10,6 @@
 /dist/
 *.egg
 *.egg-info
-/.settings
+/.settings/
 /.project
 /.pydevproject
