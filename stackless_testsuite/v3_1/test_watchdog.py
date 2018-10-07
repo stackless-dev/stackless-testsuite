@@ -26,6 +26,7 @@ import sys
 import unittest
 import stackless
 import random
+import warnings
 from stackless_testsuite.util import StacklessTestCase, require_one_thread
 
 if __name__ == '__main__':
@@ -197,6 +198,25 @@ class TestWatchdog(StacklessTestCase):
     def tearDown(self):
         del self.verbose
 
+    def rapid_scheduling(self, newvalue=None):
+        if newvalue is None:
+            # make sure that we get enough tick counting
+            newvalue = 10
+        if sys.hexversion < 0x03020000:
+            try:
+                hold = sys.getcheckinterval()
+            except AttributeError:
+                hold = 10  # default before 2.3
+            # make sure that we get enough tick counting
+            sys.setcheckinterval(newvalue)
+        else:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                hold = sys.getcheckinterval()            
+                
+                sys.setcheckinterval(newvalue)
+        return hold
+
     def run_tasklets(self, fn, n=100):
         scheduler = SimpleScheduler(n, self.softSchedule)
         tasklets = []
@@ -225,16 +245,13 @@ class TestWatchdog(StacklessTestCase):
 
     def test_tasklet_with_schedule(self):
         # make sure that we get enough tick counting
-        try:
-            hold = sys.getcheckinterval()
-        except AttributeError:
-            hold = 10  # default before 2.3
-        sys.setcheckinterval(10)
+        hold = self.rapid_scheduling()
 
         n1 = self.run_tasklets(runtask)
         n2 = self.run_tasklets(runtask2)
 
-        sys.setcheckinterval(hold)
+        self.rapid_scheduling(hold)
+
         if self.verbose:
             print()
             print(20 * "*", "runtask:", n1, "runtask2:", n2)
@@ -558,7 +575,7 @@ class TestNewWatchdog(StacklessTestCase):
 
         def task():
             while True:
-                for i in xrange(200):
+                for i in xrange(1000):
                     i = i
                 stackless.schedule()
 
