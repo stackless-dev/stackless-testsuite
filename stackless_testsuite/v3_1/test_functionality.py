@@ -119,7 +119,7 @@ class OtherTestCases(StacklessTestCase):
     def testSig_get_thread_info(self):
         # get_thread_info(thread_id)
         threadid = thread.get_ident()
-        for result in self.checkSignatureNamedArgs(stackless.get_thread_info, 0, None, "thread_id", threadid):
+        for result in self.checkSignatureNamedArgs(stackless.get_thread_info, 0, None, "thread_id", threadid, "flags", 0):
             self.assertIsInstance(result, tuple)
             self.assertEqual(3, len(result))
 
