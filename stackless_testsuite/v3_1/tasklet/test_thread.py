@@ -405,7 +405,8 @@ class DeadThreadTest(RemoteTaskletTests):
         self.assertEqual(t.thread_id, -1)
         self.assertRaises(RuntimeError, t.switch)
         self.assertEqual(t.thread_id, -1)
-        self.assertRaises(MyException, t.raise_exception, MyException, 'test')
+        self.assertRaises(RuntimeError if sys.hexversion >= 0x03030700
+                          else MyException, t.raise_exception, MyException, 'test')
         self.assertEqual(t.thread_id, -1)
         self.assertRaises(RuntimeError, t.throw, MyException)
         self.assertEqual(t.thread_id, -1)
