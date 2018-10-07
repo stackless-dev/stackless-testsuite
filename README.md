@@ -11,7 +11,12 @@ version.
 Changelog
 ---------
 
-2016-02-14 Version 0.0.1:
+2018-09-07 version 0.0.2:
+
+ * Adapted to recent versions of Stackless Python
+ * Migrated to https://github.com/stackless-dev/stackless-testsuite
+
+2016-02-14 version 0.0.1:
 
  * As of today I have a reasonable set of test cases.
    It is not complete. For instance, pickling is still missing.
