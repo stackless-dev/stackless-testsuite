@@ -21,7 +21,7 @@ from __future__ import absolute_import, print_function, division
 from distutils.core import setup
 
 # The full version, including alpha/beta/rc tags.
-release = '0.0.2'
+release = '0.0.3'
 
 setup(
     name='stackless_testsuite',
