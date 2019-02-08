@@ -185,6 +185,7 @@ class StacklessTestCaseMixin(object):
                                    func, *(args + [additionalArg]))
         if nb_mandatory > 0:
             exc_msg = r"(takes|expected) at least {0} argument|Required argument '{1}' \(pos 1\) not found".format(nb_mandatory, names[0])
+            exc_msg += r"|{0}\(\) missing required argument '{1}' \(pos 1\)".format(func.__name__, names[0])
             if len(args) == nb_mandatory:
                 if nb_mandatory == 1:
                     exc_msg = r"takes exactly one argument"

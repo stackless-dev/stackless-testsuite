@@ -470,7 +470,7 @@ class BindThreadTest(RemoteTaskletTests):
         t.remove()
         with theThread:
             self.assertEqual(t.thread_id, theThread.ident)
-            self.assertRaises(ValueError, t.bind_thread, -2)
+            self.assertRaises((ValueError, OverflowError), t.bind_thread, -2)
             t.bind_thread(current_id)
         self.assertEqual(t.thread_id, current_id)
         t.run()
